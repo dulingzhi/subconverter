@@ -22,3 +22,4 @@ base/cache
 
 # Package files
 *.tgz
+.vercel

@@ -3,7 +3,10 @@
   "builds": [
     {
       "src": "src/vercel.ts",
-      "use": "@vercel/node"
+      "use": "@vercel/node",
+      "config": {
+        "maxDuration": 10
+      }
     }
   ],
   "routes": [
@@ -12,11 +15,6 @@
       "dest": "src/vercel.ts"
     }
   ],
-  "functions": {
-    "src/vercel.ts": {
-      "maxDuration": 10
-    }
-  },
   "env": {
     "PORT": "8080"
   }
