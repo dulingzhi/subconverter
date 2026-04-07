@@ -101,7 +101,7 @@ export async function subconverterHandler(
 
     // If result is empty, provide helpful error message
     if (!result || result.trim() === '') {
-      request.log.warn('Conversion returned empty result', { url: url ? 'present' : 'none', target: format });
+      request.log.warn('Conversion returned empty result');
       reply.code(500);
       return url
         ? 'Error: Failed to fetch or parse subscription from URL. The URL may be inaccessible from Vercel or contain no valid proxies.'
