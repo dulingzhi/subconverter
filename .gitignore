@@ -2,12 +2,16 @@
 node_modules
 dist
 .env
+.env.local
 *.log
 
 # Build
 cmake-build-debug
 build
 *.exe
+
+# Vercel
+api/
 
 # IDE
 .vscode

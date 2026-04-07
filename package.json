@@ -6,6 +6,7 @@
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
+    "build:vercel": "tsc -p tsconfig.vercel.json",
     "dev": "tsx watch src/index.ts",
     "start": "node dist/index.js",
     "lint": "eslint src --ext .ts",
@@ -30,6 +31,7 @@
   "devDependencies": {
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^20.9.0",
+    "@vercel/node": "^3.0.0",
     "tsx": "^4.1.2",
     "typescript": "^5.2.2",
     "eslint": "^8.54.0",
