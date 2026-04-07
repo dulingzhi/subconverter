@@ -146,6 +146,8 @@ function fetchUrlContent(url: string, timeout: number): Promise<string> {
       res.on('end', () => {
         const data = Buffer.concat(chunks).toString('utf-8');
 
+        console.log(`Response status: ${res.statusCode}, Content length: ${data.length} bytes`);
+
         // Handle redirects
         if (res.statusCode && [301, 302, 303, 307, 308].includes(res.statusCode)) {
           const location = res.headers.location;
@@ -159,8 +161,10 @@ function fetchUrlContent(url: string, timeout: number): Promise<string> {
         }
 
         if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
+          console.log(`Fetched ${data.length} bytes from ${url}`);
           resolve(data);
         } else {
+          console.error(`HTTP error: ${res.statusCode} - ${res.statusMessage}`);
           reject(new Error(`HTTP ${res.statusCode}: ${res.statusMessage}`));
         }
       });
