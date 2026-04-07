@@ -1,3 +1,4 @@
+import https from 'https';
 import { ProxyNode, SubscriptionConfig } from '../types/index.js';
 import { base64Decode } from '../utils/base64.js';
 import { parseSS, parseSSR, parseVmess, parseTrojan, parseHysteria2, parseVLESS, parseSOCKS, parseHTTP } from './proxy-parser.js';
@@ -93,61 +94,59 @@ export async function parseSubscriptionFromUrl(
   url: string,
   timeout = 30000
 ): Promise<SubscriptionConfig> {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeout);
+  const content = await fetchUrlContent(url, timeout);
+  const nodes = parseSubscription(content);
 
-  try {
-    const response = await fetch(url, {
-      signal: controller.signal,
+  return {
+    nodes,
+    source: url,
+  };
+}
+
+/**
+ * Fetch URL content using Node.js https module for better compatibility
+ */
+function fetchUrlContent(url: string, timeout: number): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const parsedUrl = new URL(url);
+    const options = {
+      hostname: parsedUrl.hostname,
+      port: parsedUrl.port || (parsedUrl.protocol === 'https:' ? 443 : 80),
+      path: parsedUrl.pathname + parsedUrl.search,
+      method: 'GET',
+      timeout: timeout,
       headers: {
         'User-Agent': 'ClashForWindows/0.20.0',
         'Accept': '*/*',
       },
-    });
+      rejectUnauthorized: false, // Allow self-signed certs
+    };
 
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
-
-    const content = await response.text();
-    const nodes = parseSubscription(content);
-
-    // Parse subscription info from headers if available
-    const userInfo = response.headers.get('subscription-userinfo');
-    let subscriptionInfo = undefined;
-
-    if (userInfo) {
-      const info: Record<string, number> = {};
-      userInfo.split(';').forEach(part => {
-        const [key, value] = part.trim().split('=');
-        if (key && value) {
-          info[key.trim()] = parseInt(value.trim(), 10);
+    const req = https.request(options, (res) => {
+      let data = '';
+      res.on('data', (chunk) => {
+        data += chunk;
+      });
+      res.on('end', () => {
+        if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
+          resolve(data);
+        } else {
+          reject(new Error(`HTTP ${res.statusCode}: ${res.statusMessage}`));
         }
       });
-      subscriptionInfo = {
-        upload: info.upload || 0,
-        download: info.download || 0,
-        total: info.total || 0,
-        expire: info.expire || 0,
-      };
-    }
+    });
 
-    return {
-      nodes,
-      userInfo: subscriptionInfo,
-      source: url,
-    };
-  } catch (error) {
-    if (error instanceof Error) {
-      if ((error as any).code === 'UND_ERR_CONNECT' || error.message.includes('timeout')) {
-        throw new Error(`Failed to connect to subscription URL: ${url}. This may be due to network restrictions or the server being unreachable.`);
-      }
-      throw new Error(`Failed to fetch subscription: ${error.message}`);
-    }
-    throw error;
-  } finally {
-    clearTimeout(timeoutId);
-  }
+    req.on('error', (error) => {
+      reject(new Error(`Failed to fetch ${url}: ${error.message}`));
+    });
+
+    req.on('timeout', () => {
+      req.destroy();
+      reject(new Error(`Request timeout after ${timeout}ms`));
+    });
+
+    req.end();
+  });
 }
 
 /**
