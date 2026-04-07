@@ -32,11 +32,9 @@ export function parseLink(link: string): ProxyNode | null {
     return parseSOCKS(trimmed);
   }
   if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
-    // Only parse as HTTP proxy if it's not a valid URL with other schemes
     try {
       const url = new URL(trimmed);
       if (url.protocol === 'http:' || url.protocol === 'https:') {
-        // Check if it's actually an HTTP proxy link (has username@host:port format)
         if (url.username || url.password) {
           return parseHTTP(trimmed);
         }
@@ -110,61 +108,56 @@ export async function parseSubscriptionFromUrl(
  */
 function fetchUrlContent(url: string, timeout: number): Promise<string> {
   return new Promise((resolve, reject) => {
-    fetchWithRedirects(url, timeout, 0)
-      .then(resolve)
-      .catch(reject);
-  });
-}
-
-/**
- * Fetch URL with redirect support (max 5 redirects)
- */
-function fetchWithRedirects(url: string, timeout: number, redirectCount: number): Promise<string> {
-  if (redirectCount > 5) {
-    return Promise.reject(new Error('Too many redirects'));
-  }
-
-  return new Promise((resolve, reject) => {
     const parsedUrl = new URL(url);
     const isHttps = parsedUrl.protocol === 'https:';
     const httpModule = isHttps ? https : http;
 
+    // Use direct port if specified in URL
+    const port = parsedUrl.port ? parseInt(parsedUrl.port, 10) : (isHttps ? 443 : 80);
+
     const options = {
       hostname: parsedUrl.hostname,
-      port: parsedUrl.port || (isHttps ? 443 : 80),
+      port: port,
       path: parsedUrl.pathname + parsedUrl.search,
       method: 'GET',
       timeout: timeout,
       headers: {
-        'User-Agent': 'ClashForWindows/0.20.0',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         'Accept': '*/*',
       },
-      rejectUnauthorized: false, // Skip SSL verification
+      rejectUnauthorized: false,
       agent: new httpModule.Agent({
         rejectUnauthorized: false,
         keepAlive: false,
+        scheduling: 'lifo',
+        maxSockets: 1,
       }),
     };
 
-    const req = httpModule.request(options, (res: any) => {
-      // Handle redirects (301, 302, 303, 307, 308)
-      if (res.statusCode && [301, 302, 303, 307, 308].includes(res.statusCode)) {
-        const location = res.headers.location;
-        if (location) {
-          const redirectUrl = new URL(location, url).toString();
-          console.log(`Redirecting to: ${redirectUrl}`);
-          fetchWithRedirects(redirectUrl, timeout, redirectCount + 1)
-            .then(resolve)
-            .catch(reject);
-          return;
-        }
-      }
+    console.log(`Fetching: ${url} (port: ${port}, https: ${isHttps})`);
 
-      let data = '';
-      res.on('data', (chunk: any) => {
-        data += chunk;
+    const req = httpModule.request(options, (res) => {
+      const chunks: Buffer[] = [];
+
+      res.on('data', (chunk: Buffer) => {
+        chunks.push(chunk);
       });
+
       res.on('end', () => {
+        const data = Buffer.concat(chunks).toString('utf-8');
+
+        // Handle redirects
+        if (res.statusCode && [301, 302, 303, 307, 308].includes(res.statusCode)) {
+          const location = res.headers.location;
+          if (location) {
+            console.log(`Redirecting to: ${location}`);
+            fetchUrlContent(location, timeout)
+              .then(resolve)
+              .catch(reject);
+            return;
+          }
+        }
+
         if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
           resolve(data);
         } else {
@@ -173,11 +166,13 @@ function fetchWithRedirects(url: string, timeout: number, redirectCount: number)
       });
     });
 
-    req.on('error', (error: any) => {
+    req.on('error', (error) => {
+      console.error(`Fetch error: ${error.message}`);
       reject(new Error(`Failed to fetch ${url}: ${error.message}`));
     });
 
     req.on('timeout', () => {
+      console.error(`Request timeout after ${timeout}ms`);
       req.destroy();
       reject(new Error(`Request timeout after ${timeout}ms`));
     });
@@ -200,7 +195,6 @@ export function parseSubscriptionContent(content: string): SubscriptionConfig {
  * Parse Clash config to extract nodes
  */
 export function parseClashConfig(content: string): ProxyNode[] {
-  // Simple YAML parsing - in production, use a proper YAML parser
   const nodes: ProxyNode[] = [];
 
   // Find proxies section
@@ -256,7 +250,6 @@ export function parseQuantumultConfig(content: string): ProxyNode[] {
   const lines = serverSection[1].split('\n').filter(l => l.trim() && !l.trim().startsWith('#'));
 
   for (const line of lines) {
-    // Parse Quan format: name = ip, port, type, "password", ...
     const parts = line.split(',').map(p => p.trim());
     if (parts.length < 4) continue;
 
@@ -292,7 +285,6 @@ export function parseSurgeConfig(content: string): ProxyNode[] {
   const lines = proxySection[1].split('\n').filter(l => l.trim() && !l.trim().startsWith('#'));
 
   for (const line of lines) {
-    // Parse Surge format: name = type, server, port, ...
     const match = line.match(/^([^=]+)\s*=\s*(.+)$/);
     if (!match) continue;
 
