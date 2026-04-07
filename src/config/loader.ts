@@ -18,7 +18,7 @@ export interface ServerConfig {
 
 const defaultConfig: ServerConfig = {
   listenAddress: '0.0.0.0',
-  listenPort: 25500,
+  listenPort: 80,
   maxConcurrentThreads: 4,
   maxPendingConnections: 32,
   enableCron: false,
