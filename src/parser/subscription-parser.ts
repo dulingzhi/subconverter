@@ -145,7 +145,7 @@ function fetchWithRedirects(url: string, timeout: number, redirectCount: number)
       }),
     };
 
-    const req = http.request(options, (res) => {
+    const req = http.request(options, (res: any) => {
       // Handle redirects (301, 302, 303, 307, 308)
       if (res.statusCode && [301, 302, 303, 307, 308].includes(res.statusCode)) {
         const location = res.headers.location;
@@ -160,7 +160,7 @@ function fetchWithRedirects(url: string, timeout: number, redirectCount: number)
       }
 
       let data = '';
-      res.on('data', (chunk) => {
+      res.on('data', (chunk: any) => {
         data += chunk;
       });
       res.on('end', () => {
@@ -172,7 +172,7 @@ function fetchWithRedirects(url: string, timeout: number, redirectCount: number)
       });
     });
 
-    req.on('error', (error) => {
+    req.on('error', (error: any) => {
       reject(new Error(`Failed to fetch ${url}: ${error.message}`));
     });
 
