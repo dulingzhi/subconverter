@@ -55,21 +55,29 @@ export function parseSubscription(content: string): ProxyNode[] {
 
   // Try to decode as base64 first (many subs are base64 encoded)
   let decoded = content;
+  console.log(`parseSubscription: input length = ${content.length}`);
   try {
     // Check if content looks like base64
     if (/^[A-Za-z0-9+/=]+$/.test(content.trim())) {
       const attempt = base64Decode(content.trim());
+      console.log(`base64Decode result: ${attempt.slice(0, 100)}...`);
       // Validate it's valid UTF-8 text
       if (attempt && /^[\s\S]*$/.test(attempt)) {
         decoded = attempt;
+        console.log(`Decoded from base64: ${attempt.length} bytes`);
       }
     }
-  } catch {
+  } catch (e: any) {
+    console.log(`Not base64 or decode error: ${e.message}`);
     // Not base64, use as-is
   }
 
   // Split by lines
   const lines = decoded.split(/[\r\n]+/).filter(line => line.trim());
+  console.log(`Found ${lines.length} lines`);
+  if (lines.length > 0) {
+    console.log(`First line: ${lines[0].slice(0, 100)}`);
+  }
 
   for (const line of lines) {
     // Skip empty lines and comments
@@ -80,9 +88,12 @@ export function parseSubscription(content: string): ProxyNode[] {
     const node = parseLink(line);
     if (node) {
       nodes.push(node);
+    } else {
+      console.log(`Failed to parse line: ${line.slice(0, 50)}`);
     }
   }
 
+  console.log(`Parsed ${nodes.length} nodes`);
   return nodes;
 }
 
