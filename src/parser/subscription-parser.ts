@@ -105,13 +105,32 @@ export async function parseSubscriptionFromUrl(
 
 /**
  * Fetch URL content using Node.js https module for better compatibility
+ * Handles redirects and custom ports with SSL bypass
  */
 function fetchUrlContent(url: string, timeout: number): Promise<string> {
   return new Promise((resolve, reject) => {
+    fetchWithRedirects(url, timeout, 0)
+      .then(resolve)
+      .catch(reject);
+  });
+}
+
+/**
+ * Fetch URL with redirect support (max 5 redirects)
+ */
+function fetchWithRedirects(url: string, timeout: number, redirectCount: number): Promise<string> {
+  if (redirectCount > 5) {
+    return Promise.reject(new Error('Too many redirects'));
+  }
+
+  return new Promise((resolve, reject) => {
     const parsedUrl = new URL(url);
+    const isHttps = parsedUrl.protocol === 'https:';
+    const http = isHttps ? require('https') : require('http');
+
     const options = {
       hostname: parsedUrl.hostname,
-      port: parsedUrl.port || (parsedUrl.protocol === 'https:' ? 443 : 80),
+      port: parsedUrl.port || (isHttps ? 443 : 80),
       path: parsedUrl.pathname + parsedUrl.search,
       method: 'GET',
       timeout: timeout,
@@ -119,10 +138,27 @@ function fetchUrlContent(url: string, timeout: number): Promise<string> {
         'User-Agent': 'ClashForWindows/0.20.0',
         'Accept': '*/*',
       },
-      rejectUnauthorized: false, // Allow self-signed certs
+      rejectUnauthorized: false, // Skip SSL verification
+      agent: new http.Agent({
+        rejectUnauthorized: false,
+        keepAlive: false,
+      }),
     };
 
-    const req = https.request(options, (res) => {
+    const req = http.request(options, (res) => {
+      // Handle redirects (301, 302, 303, 307, 308)
+      if (res.statusCode && [301, 302, 303, 307, 308].includes(res.statusCode)) {
+        const location = res.headers.location;
+        if (location) {
+          const redirectUrl = new URL(location, url).toString();
+          console.log(`Redirecting to: ${redirectUrl}`);
+          fetchWithRedirects(redirectUrl, timeout, redirectCount + 1)
+            .then(resolve)
+            .catch(reject);
+          return;
+        }
+      }
+
       let data = '';
       res.on('data', (chunk) => {
         data += chunk;
