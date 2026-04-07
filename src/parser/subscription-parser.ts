@@ -91,7 +91,7 @@ export function parseSubscription(content: string): ProxyNode[] {
  */
 export async function parseSubscriptionFromUrl(
   url: string,
-  timeout = 10000
+  timeout = 30000
 ): Promise<SubscriptionConfig> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeout);
@@ -101,6 +101,7 @@ export async function parseSubscriptionFromUrl(
       signal: controller.signal,
       headers: {
         'User-Agent': 'ClashForWindows/0.20.0',
+        'Accept': '*/*',
       },
     });
 
@@ -136,6 +137,14 @@ export async function parseSubscriptionFromUrl(
       userInfo: subscriptionInfo,
       source: url,
     };
+  } catch (error) {
+    if (error instanceof Error) {
+      if ((error as any).code === 'UND_ERR_CONNECT' || error.message.includes('timeout')) {
+        throw new Error(`Failed to connect to subscription URL: ${url}. This may be due to network restrictions or the server being unreachable.`);
+      }
+      throw new Error(`Failed to fetch subscription: ${error.message}`);
+    }
+    throw error;
   } finally {
     clearTimeout(timeoutId);
   }
