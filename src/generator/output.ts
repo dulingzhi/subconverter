@@ -44,6 +44,22 @@ export function generateClash(
       }
     }
 
+    // Reality options for VLESS
+    if (node.reality) {
+      proxy['reality-opts'] = {
+        'public-key': node.reality.publicKey,
+        'short-id': node.reality.shortId,
+      };
+      if (node.reality.spiderX) {
+        proxy['reality-opts']['spider-x'] = node.reality.spiderX;
+      }
+    }
+
+    // Flow for VLESS
+    if (node.type === 'vless' && node.network === 'tcp') {
+      // Flow is typically xtls-rprx-vision for reality
+    }
+
     // Network options
     if (node.network) {
       proxy.network = node.network;

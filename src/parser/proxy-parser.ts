@@ -359,7 +359,7 @@ export function parseVLESS(url: string): ProxyNode | null {
   }
 
   const node: ProxyNode = {
-    name: parsed.hash || `VLESS-${parsed.hostname}:${parsed.port}`,
+    name: parsed.hash ? decodeURIComponent(parsed.hash) : `VLESS-${parsed.hostname}:${parsed.port}`,
     type: ProxyType.VLESS,
     server: parsed.hostname,
     port: parsed.port,
@@ -368,20 +368,29 @@ export function parseVLESS(url: string): ProxyNode | null {
 
   const flow = parsed.searchParams.get('flow');
   if (flow) {
-    // Handle flow
+    // Handle flow for xtls-rprx etc
   }
 
   const security = parsed.searchParams.get('security');
+
+  // TLS
   if (security === 'tls') {
     node.tls = {
       enabled: true,
-      serverName: parsed.searchParams.get('sni') || undefined,
+      serverName: parsed.searchParams.get('sni') || parsed.hostname,
     } as TLSOptions;
-  } else if (security === 'reality') {
+  }
+  // Reality
+  else if (security === 'reality') {
+    node.tls = {
+      enabled: true,
+      serverName: parsed.searchParams.get('sni') || parsed.searchParams.get('servername') || parsed.hostname,
+    } as TLSOptions;
+
     node.reality = {
       publicKey: parsed.searchParams.get('pbk') || undefined,
       shortId: parsed.searchParams.get('sid') || undefined,
-      spiderX: parsed.searchParams.get('spx') || undefined,
+      spiderX: parsed.searchParams.get('spx') ? decodeURIComponent(parsed.searchParams.get('spx')!) : undefined,
     } as RealityOpts;
   }
 
