@@ -74,6 +74,8 @@ export async function subconverterHandler(
   try {
     const format = parseTargetFormat(target);
 
+    console.log('Processing conversion request:', { url: url ? 'present' : 'none', content: postContent ? 'present' : 'none', target: format });
+
     const result = await convert({
       target: format,
       url,
@@ -90,6 +92,8 @@ export async function subconverterHandler(
       scv: scv === 'true',
     });
 
+    console.log('Conversion result:', result ? `${result.length} bytes` : 'empty');
+
     // Set appropriate content type based on target
     const contentType = getContentType(format);
     reply.header('Content-Type', contentType);
@@ -101,16 +105,16 @@ export async function subconverterHandler(
 
     // If result is empty, provide helpful error message
     if (!result || result.trim() === '') {
-      request.log.warn('Conversion returned empty result');
+      console.warn('Conversion returned empty result');
       reply.code(500);
       return url
-        ? 'Error: Failed to fetch or parse subscription from URL. The URL may be inaccessible from Vercel or contain no valid proxies.'
+        ? 'Error: Failed to fetch or parse subscription from URL. The URL may be inaccessible from the server or contain no valid proxies.'
         : 'Error: No valid proxies found in content';
     }
 
     return result;
   } catch (error) {
-    request.log.error(error);
+    console.error('Conversion error:', error);
     reply.code(500);
 
     if (error instanceof Error) {
