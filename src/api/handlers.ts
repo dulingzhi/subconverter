@@ -99,6 +99,15 @@ export async function subconverterHandler(
       reply.header('Profile-Update-Interval', interval || '24');
     }
 
+    // If result is empty, provide helpful error message
+    if (!result || result.trim() === '') {
+      request.log.warn('Conversion returned empty result', { url: url ? 'present' : 'none', target: format });
+      reply.code(500);
+      return url
+        ? 'Error: Failed to fetch or parse subscription from URL. The URL may be inaccessible from Vercel or contain no valid proxies.'
+        : 'Error: No valid proxies found in content';
+    }
+
     return result;
   } catch (error) {
     request.log.error(error);

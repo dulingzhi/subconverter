@@ -89,18 +89,19 @@ export function generateClash(
 
   if (groups.length > 0) {
     proxyGroups.push(...groups);
-  } else {
-    // Default groups
+  } else if (nodes.length > 0) {
+    // Default groups - only add if we have nodes
+    const nodeNames = nodes.map(n => n.name);
     proxyGroups.push(
       {
         name: 'Proxy',
         type: 'select',
-        proxies: ['DIRECT', ...nodes.map(n => n.name)],
+        proxies: ['DIRECT', ...nodeNames],
       },
       {
         name: 'Auto',
         type: 'url-test',
-        proxies: nodes.map(n => n.name),
+        proxies: nodeNames,
         url: 'http://www.gstatic.com/generate_204',
         interval: 300,
       }
