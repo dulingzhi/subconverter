@@ -1,4 +1,5 @@
 import https from 'https';
+import http from 'http';
 import { ProxyNode, SubscriptionConfig } from '../types/index.js';
 import { base64Decode } from '../utils/base64.js';
 import { parseSS, parseSSR, parseVmess, parseTrojan, parseHysteria2, parseVLESS, parseSOCKS, parseHTTP } from './proxy-parser.js';
@@ -126,7 +127,7 @@ function fetchWithRedirects(url: string, timeout: number, redirectCount: number)
   return new Promise((resolve, reject) => {
     const parsedUrl = new URL(url);
     const isHttps = parsedUrl.protocol === 'https:';
-    const http = isHttps ? require('https') : require('http');
+    const httpModule = isHttps ? https : http;
 
     const options = {
       hostname: parsedUrl.hostname,
@@ -139,13 +140,13 @@ function fetchWithRedirects(url: string, timeout: number, redirectCount: number)
         'Accept': '*/*',
       },
       rejectUnauthorized: false, // Skip SSL verification
-      agent: new http.Agent({
+      agent: new httpModule.Agent({
         rejectUnauthorized: false,
         keepAlive: false,
       }),
     };
 
-    const req = http.request(options, (res: any) => {
+    const req = httpModule.request(options, (res: any) => {
       // Handle redirects (301, 302, 303, 307, 308)
       if (res.statusCode && [301, 302, 303, 307, 308].includes(res.statusCode)) {
         const location = res.headers.location;
