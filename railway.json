@@ -1,0 +1,9 @@
+{
+  "$schema": "http://json.schemastore.org/skip-rules",
+  "build": {
+    "skip": "false"
+  },
+  "deploy": {
+    "skip": "false"
+  }
+}

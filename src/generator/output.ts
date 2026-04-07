@@ -46,13 +46,14 @@ export function generateClash(
 
     // Reality options for VLESS
     if (node.reality) {
-      proxy['reality-opts'] = {
+      const realityOpts: Record<string, string | undefined> = {
         'public-key': node.reality.publicKey,
         'short-id': node.reality.shortId,
       };
       if (node.reality.spiderX) {
-        proxy['reality-opts']['spider-x'] = node.reality.spiderX;
+        realityOpts['spider-x'] = node.reality.spiderX;
       }
+      proxy['reality-opts'] = realityOpts;
     }
 
     // Flow for VLESS
