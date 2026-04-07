@@ -1,0 +1,17 @@
+# subconverter 配置文件示例
+
+[server]
+listen_address = "0.0.0.0"
+listen_port = 25500
+max_concurrent_threads = 4
+max_pending_connections = 32
+log_level = "info"
+
+# 访问令牌（可选），设置后需要在请求中传入 token 参数
+# access_token = "your-secret-token"
+
+# API 模式，启用后将禁用一些便捷端点
+# api_mode = false
+
+# 启用定时任务
+# enable_cron = false

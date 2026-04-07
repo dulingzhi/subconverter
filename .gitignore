@@ -1,6 +1,20 @@
-subconverter.exe
-.vscode
+# Node.js
+node_modules
+dist
+.env
+*.log
+
+# Build
 cmake-build-debug
-.idea
-base/cache
 build
+*.exe
+
+# IDE
+.vscode
+.idea
+
+# Cache
+base/cache
+
+# Package files
+*.tgz
