@@ -1,5 +1,8 @@
 import { ProxyNode, TargetFormat, ClashConfig, ProxyGroup } from '../types/index.js';
 
+// Buffer for Node.js environment
+const Buffer = globalThis.Buffer || (class { static from(data: string) { return { toString: (enc: string) => btoa(unescape(encodeURIComponent(data))) } } });
+
 /**
  * Generate Clash config from proxy nodes
  */
@@ -413,8 +416,65 @@ export function generate(
  * Encode a proxy node to URL format
  */
 function encodeProxy(node: ProxyNode): string | null {
-  // Implementation depends on specific format requirements
-  return null;
+  switch (node.type) {
+    case 'ss': {
+      // ss://base64(method:password@server:port)#name
+      const userInfo = `${node.cipher}:${node.password}`;
+      const serverInfo = `${node.server}:${node.port}`;
+      const encoded = Buffer.from(`${userInfo}@${serverInfo}`).toString('base64');
+      return `ss://${encoded}#${encodeURIComponent(node.name)}`;
+    }
+    case 'ssr': {
+      // ssr://base64(server:port:protocol:method:obfs:base64(password))
+      const passwordB64 = Buffer.from(node.password || '').toString('base64');
+      const mainPart = `${node.server}:${node.port}:${node.ssrProtocol || 'origin'}:${node.cipher || 'none'}:${node.ssrObfs || 'plain'}:${Buffer.from(node.password || '').toString('base64')}`;
+      const encoded = Buffer.from(mainPart).toString('base64');
+      return `ssr://${encoded}`;
+    }
+    case 'vmess': {
+      const vmessConfig = {
+        add: node.server,
+        port: node.port.toString(),
+        id: node.uuid,
+        aid: node.alterId || 0,
+        net: node.network || 'tcp',
+        type: 'none',
+        host: node.wsOpts?.headers?.Host || '',
+        path: node.wsOpts?.path || '',
+        tls: node.tls?.enabled ? 'tls' : '',
+        sni: node.tls?.serverName || '',
+        ps: node.name,
+      };
+      const encoded = Buffer.from(JSON.stringify(vmessConfig)).toString('base64');
+      return `vmess://${encoded}`;
+    }
+    case 'vless': {
+      // vless://uuid@server:port?params#name
+      const params = new URLSearchParams();
+      if (node.network) params.set('type', node.network);
+      if (node.tls?.serverName) params.set('sni', node.tls.serverName);
+      if (node.reality?.publicKey) params.set('pbk', node.reality.publicKey);
+      if (node.reality?.shortId) params.set('sid', node.reality.shortId);
+      if (node.reality?.spiderX) params.set('spx', node.reality.spiderX);
+      return `vless://${node.uuid}@${node.server}:${node.port}?${params.toString()}#${encodeURIComponent(node.name)}`;
+    }
+    case 'trojan': {
+      // trojan://password@server:port?sni=xxx#name
+      const params = new URLSearchParams();
+      if (node.tls?.serverName) params.set('sni', node.tls.serverName);
+      return `trojan://${node.password}@${node.server}:${node.port}?${params.toString()}#${encodeURIComponent(node.name)}`;
+    }
+    case 'hysteria2': {
+      // hysteria2://password@server:port?sni=xxx&insecure=1#name
+      const params = new URLSearchParams();
+      if (node.tls?.serverName) params.set('sni', node.tls.serverName);
+      if (node.skipCertVerify) params.set('insecure', '1');
+      if (node.hyObfs) params.set('obfs', node.hyObfs);
+      return `hysteria2://${node.password}@${node.server}:${node.port}?${params.toString()}#${encodeURIComponent(node.name)}`;
+    }
+    default:
+      return null;
+  }
 }
 
 // Import base64 for encoding
